@@ -1,6 +1,6 @@
-# name: test/sql/array_agg.test
+# name: test/sql/grammar/array_agg.test
 # description: Snowflake ARRAY_AGG ... WITHIN GROUP syntax and semantics
-# group: [sql]
+# group: [grammar]
 
 require duckflake
 

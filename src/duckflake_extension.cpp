@@ -1,20 +1,15 @@
 #define DUCKDB_EXTENSION_MAIN
 
 #include "duckflake_extension.hpp"
-#include "snowflake_grammar.hpp"
+
 #include "duckdb.hpp"
-#include "duckdb/function/scalar_function.hpp"
+#include "functions/functions.hpp"
+#include "grammar/snowflake_grammar.hpp"
 
 namespace duckdb {
 
-// Smoke-test function so we can verify the extension loads; remove once real functionality lands.
-inline void DuckflakeVersionFun(DataChunk &args, ExpressionState &state, Vector &result) {
-	result.SetVectorType(VectorType::CONSTANT_VECTOR);
-	ConstantVector::GetData<string_t>(result)[0] = StringVector::AddString(result, DuckflakeExtension().Version());
-}
-
 static void LoadInternal(ExtensionLoader &loader) {
-	loader.RegisterFunction(ScalarFunction("duckflake_version", {}, LogicalType::VARCHAR, DuckflakeVersionFun));
+	RegisterFunctions(loader);
 	GrammarExtension::Register(loader.GetDatabaseInstance(), make_shared_ptr<SnowflakeGrammarExtension>());
 }
 

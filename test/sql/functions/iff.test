@@ -1,0 +1,50 @@
+# name: test/sql/functions/iff.test
+# description: Snowflake IFF(condition, expr1, expr2)
+# group: [functions]
+
+require duckflake
+
+query TTTT
+SELECT IFF(TRUE, 'true', 'false'), IFF(FALSE, 'true', 'false'), IFF(NULL, 'true', 'false'), IFF(TRUE, NULL, 'false');
+----
+true	false	false	NULL
+
+# Snowflake's documented examples
+query T
+SELECT IFF(v > 50, 'High', 'Low') FROM (VALUES (22), (63), (5), (99), (NULL)) t(v);
+----
+Low
+High
+Low
+High
+Low
+
+query T
+SELECT IFF(v::INT = v, 'integer', 'non-integer') FROM (VALUES (1.0), (1.1), (-3.1415), (-5.000), (NULL)) t(v);
+----
+integer
+non-integer
+non-integer
+integer
+non-integer
+
+# Only the chosen branch is evaluated
+query I
+SELECT IFF(v > 0, v, error('should not be evaluated')) FROM (VALUES (1), (2)) t(v);
+----
+1
+2
+
+# Works without the snowflake grammar, and inside it
+statement ok
+SET active_grammar_extensions = ['snowflake'];
+
+query T
+SELECT iff(listagg(x) WITHIN GROUP (ORDER BY x) = '', 'empty', 'not empty') FROM (VALUES ('a')) t(x);
+----
+not empty
+
+statement error
+SELECT IFF(TRUE, 1);
+----
+<REGEX>:Binder Error:.*iff.*

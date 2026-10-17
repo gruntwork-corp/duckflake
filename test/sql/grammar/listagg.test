@@ -1,6 +1,6 @@
-# name: test/sql/listagg.test
+# name: test/sql/grammar/listagg.test
 # description: Snowflake LISTAGG ... WITHIN GROUP syntax and semantics
-# group: [sql]
+# group: [grammar]
 
 require duckflake
 

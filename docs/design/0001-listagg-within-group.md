@@ -111,7 +111,8 @@ DuckDB's own `duckdb/test/extension/loadable_grammar_extension_demo.cpp` uses th
 [PEG parser blog post](https://duckdb.org/2026/08/20/duckdb-20-peg-parser): grammar changes are now a separate
 `GrammarExtension` class, not a field on `ParserExtension`.
 
-Code lives in `src/snowflake_grammar.cpp`:
+Code lives in `src/grammar/`. `snowflake_grammar.cpp` registers the extension and dispatches by function name.
+`function_call.cpp` holds DuckDB's slot layout. `listagg.cpp` and `array_agg.cpp` hold the rewrites:
 
 1. `SnowflakeGrammarExtension` (name `snowflake`) returns a single change:
    `GrammarChange::SetTransformProcess("FunctionExpression", ...)`.
@@ -135,7 +136,7 @@ Code lives in `src/snowflake_grammar.cpp`:
 4. The binder then applies DuckDB's existing rule that `DISTINCT` and `ORDER BY` must use the same column, which is
    Snowflake's rule too.
 5. Activation is per connection: `SET active_grammar_extensions = ['snowflake'];`. The default is off.
-6. Tests in `test/sql/listagg.test` and `test/sql/array_agg.test` cover:
+6. Tests in `test/sql/grammar/listagg.test` and `test/sql/grammar/array_agg.test` cover:
     - the syntax is rejected before activation and after `RESET`;
     - `DISTINCT` on the same column, and on different columns (error);
     - defaults, and empty, NULL and all-NULL groups;

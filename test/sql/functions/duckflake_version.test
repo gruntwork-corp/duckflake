@@ -1,6 +1,6 @@
-# name: test/sql/duckflake.test
+# name: test/sql/functions/duckflake_version.test
 # description: test duckflake extension loads
-# group: [sql]
+# group: [functions]
 
 statement error
 SELECT duckflake_version();
