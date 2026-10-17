@@ -1,0 +1,17 @@
+# build output
+build/
+duckdb_unittest_tempdir/
+testext
+test/python/__pycache__/
+.Rhistory
+
+# local DuckDB files
+*.duckdb
+*.duckdb.wal
+
+# OS / editor
+.DS_Store
+.idea/
+cmake-build-debug/
+.cache/
+compile_commands.json

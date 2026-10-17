@@ -1,0 +1,13 @@
+# name: test/sql/duckflake.test
+# description: test duckflake extension loads
+# group: [sql]
+
+statement error
+SELECT duckflake_version();
+----
+Catalog Error: Scalar Function with name duckflake_version does not exist!
+
+require duckflake
+
+statement ok
+SELECT duckflake_version();

@@ -1,0 +1,25 @@
+{
+  "name": "duckflake",
+  "dockerComposeFile": "docker-compose.yaml",
+  "service": "devcontainer",
+  "workspaceFolder": "/workspace",
+  "remoteUser": "root",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "llvm-vs-code-extensions.vscode-clangd",
+        "ms-vscode.cmake-tools",
+        "ms-vscode.makefile-tools",
+        "vadimcn.vscode-lldb",
+        "editorconfig.editorconfig"
+      ],
+      "settings": {
+        "cmake.configureOnOpen": false,
+        "clangd.arguments": [
+          "--compile-commands-dir=${workspaceFolder}/build/debug",
+          "--background-index"
+        ]
+      }
+    }
+  }
+}

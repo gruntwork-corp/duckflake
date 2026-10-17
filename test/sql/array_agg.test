@@ -1,0 +1,110 @@
+# name: test/sql/array_agg.test
+# description: Snowflake ARRAY_AGG ... WITHIN GROUP syntax and semantics
+# group: [sql]
+
+require duckflake
+
+statement ok
+CREATE TABLE t AS SELECT * FROM (VALUES
+	(1, 'a', 3), (1, 'b', 1), (1, 'a', 2),
+	(2, 'c', 4), (2, NULL, 5),
+	(3, NULL, 6)
+) v(g, x, y);
+
+statement error
+SELECT array_agg(x) WITHIN GROUP (ORDER BY y) FROM t;
+----
+<REGEX>:Parser Error:.*Unknown ordered aggregate.*
+
+statement ok
+SET active_grammar_extensions = ['snowflake'];
+
+# WITHIN GROUP becomes the aggregate's ORDER BY; NULLs omitted; all-NULL group returns []
+query IT
+SELECT g, array_agg(x) WITHIN GROUP (ORDER BY y) FROM t GROUP BY g ORDER BY g;
+----
+1	[b, a, a]
+2	[c]
+3	[]
+
+query IT
+SELECT g, array_agg(DISTINCT x) WITHIN GROUP (ORDER BY x) FROM t GROUP BY g ORDER BY g;
+----
+1	[a, b]
+2	[c]
+3	[]
+
+# ARRAYAGG is Snowflake's alias
+query T
+SELECT arrayagg(x) WITHIN GROUP (ORDER BY y DESC) FROM t WHERE g = 1;
+----
+[a, a, b]
+
+query T
+SELECT typeof(array_agg(x) WITHIN GROUP (ORDER BY y)) FROM t;
+----
+VARCHAR[]
+
+statement error
+SELECT array_agg(DISTINCT x) WITHIN GROUP (ORDER BY y) FROM t;
+----
+<REGEX>:Binder Error:.*ORDER BY expressions must appear in the argument list.*
+
+statement error
+SELECT array_agg(x ORDER BY x) WITHIN GROUP (ORDER BY y) FROM t;
+----
+<REGEX>:Parser Error:.*Cannot combine ORDER BY inside the function arguments with WITHIN GROUP.*
+
+# Empty input returns [] instead of NULL
+query T
+SELECT array_agg(x) WITHIN GROUP (ORDER BY y) FROM t WHERE false;
+----
+[]
+
+# A user FILTER is combined with the NULL filter
+query T
+SELECT array_agg(x) WITHIN GROUP (ORDER BY y) FILTER (WHERE y > 1) FROM t WHERE g = 1;
+----
+[a, a]
+
+query T
+SELECT array_agg(x) WITHIN GROUP (ORDER BY y) FILTER (WHERE y > 4) FROM t WHERE g = 2;
+----
+[]
+
+# Without WITHIN GROUP, NULLs are still omitted
+query T
+SELECT array_agg(x ORDER BY y) FROM t WHERE g = 2;
+----
+[c]
+
+# Window form
+query IIT
+SELECT g, y, array_agg(x) WITHIN GROUP (ORDER BY y) OVER (PARTITION BY g) FROM t ORDER BY g, y;
+----
+1	1	[b, a, a]
+1	2	[b, a, a]
+1	3	[b, a, a]
+2	4	[c]
+2	5	[c]
+3	6	[]
+
+# Nested inputs
+query T
+SELECT array_agg({'k': x}) WITHIN GROUP (ORDER BY y) FROM t WHERE g = 1;
+----
+[{'k': b}, {'k': a}, {'k': a}]
+
+# DuckDB's list() is untouched and keeps NULLs
+query T
+SELECT list(x ORDER BY y) FROM t WHERE g = 2;
+----
+[c, NULL]
+
+statement ok
+RESET active_grammar_extensions;
+
+statement error
+SELECT array_agg(x) WITHIN GROUP (ORDER BY y) FROM t;
+----
+<REGEX>:Parser Error:.*Unknown ordered aggregate.*

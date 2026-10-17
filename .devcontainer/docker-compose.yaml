@@ -1,0 +1,20 @@
+services:
+  devcontainer:
+    container_name: duckflake
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        DUCKDB_VERSION: "alpha"
+    volumes:
+      - ..:/workspace:cached
+      # Keep build output and caches off the macOS bind mount; compiling DuckDB there is very slow
+      - build:/workspace/build
+      - ccache:/ccache
+      - vcpkg-cache:/root/.cache/vcpkg
+    command: sleep infinity
+
+volumes:
+  build:
+  ccache:
+  vcpkg-cache:

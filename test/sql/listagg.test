@@ -1,0 +1,128 @@
+# name: test/sql/listagg.test
+# description: Snowflake LISTAGG ... WITHIN GROUP syntax and semantics
+# group: [sql]
+
+require duckflake
+
+require json
+
+statement ok
+CREATE TABLE t AS SELECT * FROM (VALUES
+	(1, 'a', 3), (1, 'b', 1), (1, 'a', 2),
+	(2, 'c', 4), (2, NULL, 5),
+	(3, NULL, 6)
+) v(g, x, y);
+
+# Without the grammar extension DuckDB rejects the syntax
+statement error
+SELECT listagg(x, ',') WITHIN GROUP (ORDER BY y) FROM t;
+----
+<REGEX>:Parser Error:.*Unknown ordered aggregate.*
+
+statement error
+SET active_grammar_extensions = ['does_not_exist'];
+----
+<REGEX>:.*don't exist: does_not_exist.*
+
+statement ok
+SET active_grammar_extensions = ['snowflake'];
+
+# WITHIN GROUP becomes the aggregate's ORDER BY; NULLs skipped; all-NULL group returns ''
+query IT
+SELECT g, listagg(x, ',') WITHIN GROUP (ORDER BY y) FROM t GROUP BY g ORDER BY g;
+----
+1	b,a,a
+2	c
+3	(empty)
+
+# DISTINCT combined with WITHIN GROUP on the same column
+query IT
+SELECT g, listagg(DISTINCT x, ',') WITHIN GROUP (ORDER BY x) FROM t GROUP BY g ORDER BY g;
+----
+1	a,b
+2	c
+3	(empty)
+
+# Default delimiter is '' (DuckDB's own default is ',')
+query IT
+SELECT g, listagg(x) WITHIN GROUP (ORDER BY y DESC) FROM t GROUP BY g ORDER BY g;
+----
+1	aab
+2	c
+3	(empty)
+
+query T
+SELECT listagg(DISTINCT x) WITHIN GROUP (ORDER BY x) FROM t;
+----
+abc
+
+# Snowflake rejects DISTINCT and WITHIN GROUP on different columns, and so does DuckDB's binder
+statement error
+SELECT listagg(DISTINCT x, ',') WITHIN GROUP (ORDER BY y) FROM t;
+----
+<REGEX>:Binder Error:.*ORDER BY expressions must appear in the argument list.*
+
+statement error
+SELECT listagg(x, ',' ORDER BY x) WITHIN GROUP (ORDER BY y) FROM t;
+----
+<REGEX>:Parser Error:.*Cannot combine ORDER BY inside the function arguments with WITHIN GROUP.*
+
+# Empty input returns '' instead of NULL
+query T
+SELECT listagg(x, ',') WITHIN GROUP (ORDER BY y) FROM t WHERE false;
+----
+(empty)
+
+# FILTER still applies
+query T
+SELECT listagg(x, ',') WITHIN GROUP (ORDER BY y) FILTER (WHERE y > 1) FROM t WHERE g = 1;
+----
+a,a
+
+# DuckDB's native ORDER BY form keeps working, with Snowflake's default delimiter
+query T
+SELECT listagg(x ORDER BY y) FROM t WHERE g = 1;
+----
+baa
+
+# Window form
+query IIT
+SELECT g, y, listagg(x, ',') WITHIN GROUP (ORDER BY y) OVER (PARTITION BY g) FROM t ORDER BY g, y;
+----
+1	1	b,a,a
+1	2	b,a,a
+1	3	b,a,a
+2	4	c
+2	5	c
+3	6	(empty)
+
+# Nested inputs are cast to VARCHAR
+query T
+SELECT listagg({'k': x}, ',') WITHIN GROUP (ORDER BY y) FROM t WHERE g = 1;
+----
+{'k': b},{'k': a},{'k': a}
+
+query T
+SELECT listagg(json_object('k', x), ',') WITHIN GROUP (ORDER BY y) FROM t WHERE g = 1;
+----
+{"k":"b"},{"k":"a"},{"k":"a"}
+
+# Ordered-set aggregates are untouched
+query R
+SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY y) FROM t;
+----
+3.5
+
+# Other functions are untouched
+query T
+SELECT string_agg(x, ',' ORDER BY y) FROM t WHERE g = 2;
+----
+c
+
+statement ok
+RESET active_grammar_extensions;
+
+statement error
+SELECT listagg(x, ',') WITHIN GROUP (ORDER BY y) FROM t;
+----
+<REGEX>:Parser Error:.*Unknown ordered aggregate.*
