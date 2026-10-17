@@ -1,0 +1,54 @@
+# name: test/sql/functions/boolor_agg.test
+# description: Snowflake BOOLOR_AGG(expr)
+# group: [functions]
+
+require duckflake
+
+statement ok
+CREATE TABLE b AS SELECT * FROM (VALUES
+	(-4, false, true, true, true), (-3, false, true, true, false), (-2, false, false, false, true), (-1, false, false, false, false),
+	(1, true, true, true, false), (2, true, true, false, false), (3, true, false, false, false), (4, true, false, false, false)
+) v(id, c1, c2, c3, c4);
+
+# Snowflake's documented examples
+query TTTT
+SELECT boolor_agg(c1), boolor_agg(c2), boolor_agg(c3), boolor_agg(c4) FROM b WHERE id > 0;
+----
+true	true	true	false
+
+query ITTTT
+SELECT id, boolor_agg(c1) OVER (PARTITION BY id > 0), boolor_agg(c2) OVER (PARTITION BY id > 0),
+       boolor_agg(c3) OVER (PARTITION BY id > 0), boolor_agg(c4) OVER (PARTITION BY id > 0)
+FROM b ORDER BY id;
+----
+-4	false	true	true	true
+-3	false	true	true	true
+-2	false	true	true	true
+-1	false	true	true	true
+1	true	true	true	false
+2	true	true	true	false
+3	true	true	true	false
+4	true	true	true	false
+
+# Numbers are TRUE when non-zero
+query TTT
+SELECT boolor_agg(i), boolor_agg(i * 0), boolor_agg(d) FROM (VALUES (0, 0.0), (5, 0.5)) t(i, d);
+----
+true	false	true
+
+# Empty and all-NULL groups return NULL
+query TT
+SELECT boolor_agg(c1), boolor_agg(NULL::BOOLEAN) FROM b WHERE false;
+----
+NULL	NULL
+
+query IT
+SELECT id > 0, boolor_agg(c1) FROM b GROUP BY ALL ORDER BY ALL;
+----
+false	false
+true	true
+
+statement error
+SELECT boolor_agg('invalid type');
+----
+<REGEX>:Conversion Error:.*invalid type.*

@@ -9,6 +9,11 @@ namespace duckdb {
 void RegisterFunctions(ExtensionLoader &loader);
 
 void RegisterDuckflakeVersion(ExtensionLoader &loader);
+void RegisterBoolorAgg(ExtensionLoader &loader);
+void RegisterDateadd(ExtensionLoader &loader);
+void RegisterDayOfWeekIso(ExtensionLoader &loader);
 void RegisterIff(ExtensionLoader &loader);
+void RegisterMonthsBetween(ExtensionLoader &loader);
+void RegisterToArray(ExtensionLoader &loader);
 
 } // namespace duckdb

@@ -1,0 +1,59 @@
+# name: test/sql/functions/to_array.test
+# description: Snowflake TO_ARRAY(expr)
+# group: [functions]
+
+require duckflake
+
+# A scalar becomes a single-element list; a list is returned unchanged
+query TTT
+SELECT to_array(1), to_array([1, 2]), to_array('snowman,snowball,snowcone');
+----
+[1]	[1, 2]	['snowman,snowball,snowcone']
+
+query T
+SELECT typeof(to_array(1));
+----
+INTEGER[]
+
+query T
+SELECT typeof(to_array([1, 2]));
+----
+INTEGER[]
+
+# NULL stays NULL
+query T
+SELECT to_array(NULL);
+----
+NULL
+
+query T
+SELECT to_array(x) FROM (VALUES (1), (NULL), (3)) t(x);
+----
+[1]
+NULL
+[3]
+
+# Lists of lists and nested types
+query T
+SELECT to_array(x) FROM (VALUES ([1]), (NULL), ([2, 3])) t(x);
+----
+[1]
+NULL
+[2, 3]
+
+query T
+SELECT to_array({'k': 1});
+----
+[{'k': 1}]
+
+# Snowflake's ARRAY_CAT example
+query T
+SELECT list_concat(to_array(1), to_array(3));
+----
+[1, 3]
+
+# More rows than one vector
+query II
+SELECT count(*), sum(to_array(i)[1]) FROM range(5000) t(i);
+----
+5000	12497500

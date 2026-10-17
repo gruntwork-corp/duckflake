@@ -22,6 +22,7 @@ const vector<FunctionCallRewrite> &GetFunctionCallRewrites();
 
 FunctionCallRewrite ListaggRewrite();
 FunctionCallRewrite ArrayAggRewrite();
+FunctionCallRewrite DateaddRewrite();
 
 //! COALESCE(expr, fallback), keeping expr's text as the column name
 unique_ptr<ParsedExpression> CoalesceTo(unique_ptr<ParsedExpression> expr, unique_ptr<ParsedExpression> fallback);

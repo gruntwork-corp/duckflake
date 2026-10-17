@@ -1,0 +1,33 @@
+# name: test/sql/functions/dayofweekiso.test
+# description: Snowflake DAYOFWEEKISO(date_or_timestamp)
+# group: [functions]
+
+require duckflake
+
+# Monday = 1 ... Sunday = 7
+query TI
+SELECT dayname(d), dayofweekiso(d) FROM range(DATE '2025-03-31', DATE '2025-04-07', INTERVAL 1 DAY) t(d) ORDER BY d;
+----
+Monday	1
+Tuesday	2
+Wednesday	3
+Thursday	4
+Friday	5
+Saturday	6
+Sunday	7
+
+# Snowflake's example: 2025-04-05 is a Saturday
+query I
+SELECT dayofweekiso(TIMESTAMP '2025-04-05 23:39:20.123');
+----
+6
+
+query T
+SELECT typeof(dayofweekiso(DATE '2025-04-05'));
+----
+BIGINT
+
+query I
+SELECT dayofweekiso(NULL::DATE);
+----
+NULL

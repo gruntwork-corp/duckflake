@@ -1,0 +1,94 @@
+# name: test/sql/functions/dateadd.test
+# description: Snowflake DATEADD / TIMEADD / TIMESTAMPADD
+# group: [functions]
+
+require duckflake
+
+# Snowflake's documented examples
+query TTTTTT
+SELECT dateadd('year', 2, DATE '2022-05-08'), dateadd('year', -2, DATE '2022-05-08'),
+       dateadd('hour', 2, DATE '2022-04-05'), dateadd('month', 1, DATE '2023-01-31'),
+       dateadd('month', 1, DATE '2023-02-28'), dateadd('hour', 3, TIME '05:00:00');
+----
+2024-05-08	2020-05-08	2022-04-05 02:00:00	2023-02-28	2023-03-28	08:00:00
+
+# DATE stays DATE for day-or-larger parts, becomes TIMESTAMP for smaller ones
+query TTTT
+SELECT typeof(dateadd('day', 1, DATE '2022-01-01')), typeof(dateadd('hour', 1, DATE '2022-01-01')),
+       typeof(dateadd('day', 1, TIMESTAMP '2022-01-01')), typeof(dateadd('second', 1, TIME '01:00'));
+----
+DATE	TIMESTAMP	TIMESTAMP	TIME
+
+# Every unit, with Snowflake abbreviations
+query TTTTT
+SELECT dateadd('yrs', 1, DATE '2024-02-29'), dateadd('qtr', 1, DATE '2022-11-30'), dateadd('mon', -1, DATE '2022-03-31'),
+       dateadd('wk', 2, DATE '2022-01-01'), dateadd('dd', -1, DATE '2022-01-01');
+----
+2025-02-28	2023-02-28	2022-02-28	2022-01-15	2021-12-31
+
+query TTTTT
+SELECT dateadd('hrs', 25, TIMESTAMP '2022-01-01'), dateadd('mi', 90, TIMESTAMP '2022-01-01 23:00'),
+       dateadd('secs', 61, TIMESTAMP '2022-01-01'), dateadd('ms', 1500, TIMESTAMP '2022-01-01'),
+       dateadd('us', 7, TIMESTAMP '2022-01-01');
+----
+2022-01-02 01:00:00	2022-01-02 00:30:00	2022-01-01 00:01:01	2022-01-01 00:00:01.5	2022-01-01 00:00:00.000007
+
+# Part names are case-insensitive; TIME wraps around midnight
+query TT
+SELECT dateadd('DAY', 1, DATE '2022-12-31'), timeadd('HOUR', 25, TIME '01:00');
+----
+2023-01-01	02:00:00
+
+query T
+SELECT timestampadd('minute', -30, TIMESTAMP '2022-01-01 00:10');
+----
+2021-12-31 23:40:00
+
+# Values from a column, NULLs propagate
+query T
+SELECT dateadd('day', n, d) FROM (VALUES (1, DATE '2022-01-01'), (NULL, DATE '2022-01-01'), (2, NULL)) t(n, d);
+----
+2022-01-02
+NULL
+NULL
+
+statement error
+SELECT dateadd('fortnight', 1, DATE '2022-01-01');
+----
+<REGEX>:.*unsupported date or time part 'fortnight'.*
+
+statement error
+SELECT dateadd('day', 1, TIME '01:00');
+----
+<REGEX>:Binder Error:.*TIME values only accept hour or smaller parts.*
+
+statement error
+SELECT dateadd(p, 1, DATE '2022-01-01') FROM (VALUES ('day')) t(p);
+----
+<REGEX>:Binder Error:.*must be a constant.*
+
+statement error
+SELECT dateadd('year', 1000000000, DATE '2022-01-01');
+----
+<REGEX>:.*out of range.*
+
+# Without the snowflake grammar a bare part is a column name
+statement error
+SELECT dateadd(day, 1, DATE '2022-01-01');
+----
+<REGEX>:Binder Error:.*day.*
+
+statement ok
+SET active_grammar_extensions = ['snowflake'];
+
+query TTTT
+SELECT dateadd(day, 1, DATE '2022-12-31'), DATEADD(QUARTER, 1, DATE '2022-11-30'),
+       timestampadd(ms, 1500, TIMESTAMP '2022-01-01'), timeadd(hour, 1, TIME '23:30');
+----
+2023-01-01	2023-02-28	2022-01-01 00:00:01.5	00:30:00
+
+# Quoted parts and real columns are left alone
+query T
+SELECT dateadd('day', d, DATE '2022-01-01') FROM (VALUES (3)) t(d);
+----
+2022-01-04

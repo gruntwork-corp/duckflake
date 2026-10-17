@@ -11,6 +11,7 @@ const vector<FunctionCallRewrite> &GetFunctionCallRewrites() {
 	static const vector<FunctionCallRewrite> REWRITES = {
 	    ListaggRewrite(),
 	    ArrayAggRewrite(),
+	    DateaddRewrite(),
 	};
 	return REWRITES;
 }
@@ -71,7 +72,8 @@ static arena_ptr<TransformProcess> StartFunctionExpressionTransform(PEGTransform
 }
 
 SnowflakeGrammarExtension::SnowflakeGrammarExtension()
-    : GrammarExtension(NAME, "Snowflake syntax: LISTAGG / ARRAY_AGG ... WITHIN GROUP (ORDER BY ...)") {
+    : GrammarExtension(NAME,
+                       "Snowflake syntax: LISTAGG / ARRAY_AGG ... WITHIN GROUP (ORDER BY ...), DATEADD(day, ...)") {
 }
 
 vector<GrammarChange> SnowflakeGrammarExtension::GetChanges() const {

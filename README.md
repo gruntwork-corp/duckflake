@@ -10,8 +10,19 @@ SET active_grammar_extensions = ['snowflake'];
 
 SELECT LISTAGG(DISTINCT x, ', ') WITHIN GROUP (ORDER BY x) FROM t;
 SELECT ARRAY_AGG(x) WITHIN GROUP (ORDER BY y) FROM t;
-SELECT IFF(x > 0, 'positive', 'not positive') FROM t;   -- functions work without the SET
+SELECT DATEADD(day, 1, d) FROM t;                         -- bare date part needs the SET; DATEADD('day', 1, d) works without
 ```
+
+Functions, available as soon as the extension is loaded:
+
+| Function | Notes |
+| --- | --- |
+| `IFF(cond, a, b)` | NULL condition picks `b`; only the chosen branch is evaluated |
+| `TO_ARRAY(x)` | lists unchanged, NULL stays NULL, anything else becomes `[x]` |
+| `DATEADD` / `TIMEADD` / `TIMESTAMPADD(part, n, x)` | Snowflake part names; `DATE` stays `DATE` for day-or-larger parts |
+| `BOOLOR_AGG(x)` | numbers are TRUE when non-zero; works with `OVER` |
+| `MONTHS_BETWEEN(d1, d2)` | Snowflake's 31-day fraction and last-day-of-month rules |
+| `DAYOFWEEKISO(d)` | 1 = Monday ... 7 = Sunday |
 
 When active, `LISTAGG` and `ARRAY_AGG` / `ARRAYAGG` follow Snowflake's behaviour:
 

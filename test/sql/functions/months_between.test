@@ -1,0 +1,58 @@
+# name: test/sql/functions/months_between.test
+# description: Snowflake MONTHS_BETWEEN(date_expr1, date_expr2)
+# group: [functions]
+
+require duckflake
+
+# Snowflake's documented examples
+query T
+SELECT round(months_between(d1::TIMESTAMP, d2::TIMESTAMP), 6)::VARCHAR FROM (VALUES
+	(1, '2019-03-15', '2019-02-15'),
+	(2, '2019-03-31', '2019-02-28'),
+	(3, '2019-03-01', '2019-02-15'),
+	(4, '2019-03-01 02:00:00', '2019-02-15 01:00:00'),
+	(5, '2019-02-15 02:00:00', '2019-02-15 01:00:00'),
+	(6, '2019-03-28', '2019-02-28'),
+	(7, '2019-03-30', '2019-02-28'),
+	(8, '2019-03-01', '2019-02-01'),
+	(9, '2019-02-01', '2019-03-01')
+) t(i, d1, d2) ORDER BY i;
+----
+1.0
+1.0
+0.548387
+0.549731
+0.0
+1.0
+1.064516
+1.0
+-1.0
+
+query T
+SELECT typeof(months_between(DATE '2019-03-01', DATE '2019-02-15'));
+----
+DOUBLE
+
+# Swapping the arguments flips the sign
+query T
+SELECT months_between(DATE '2019-03-01', DATE '2019-02-15') = -months_between(DATE '2019-02-15', DATE '2019-03-01');
+----
+true
+
+# DATE and TIMESTAMP can be mixed
+query T
+SELECT round(months_between(DATE '2019-03-01', TIMESTAMP '2019-02-15 12:00'), 6)::VARCHAR;
+----
+0.532258
+
+# Across years, and whole months when rounded
+query TT
+SELECT months_between(DATE '2021-01-15', DATE '2019-11-15'), round(months_between('2019-03-31 12:00:00'::TIMESTAMP, '2019-02-28 00:00:00'::TIMESTAMP));
+----
+14.0	1.0
+
+# Any NULL input gives NULL
+query TT
+SELECT months_between(NULL, DATE '2019-01-01'), months_between(DATE '2019-01-01', NULL::DATE);
+----
+NULL	NULL
