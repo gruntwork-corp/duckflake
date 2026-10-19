@@ -13,6 +13,7 @@ static void LoadInternal(ExtensionLoader &loader) {
 	RegisterTypes(loader);
 	RegisterFunctions(loader);
 	GrammarExtension::Register(loader.GetDatabaseInstance(), make_shared_ptr<SnowflakeGrammarExtension>());
+	RegisterGrammarAutoActivation(loader.GetDatabaseInstance());
 }
 
 void DuckflakeExtension::Load(ExtensionLoader &loader) {

@@ -1,0 +1,80 @@
+# name: test/sql/grammar/auto_activation.test
+# description: the snowflake grammar is turned on for every connection
+# group: [grammar]
+
+require duckflake
+
+# The connection that loaded the extension is switched on once its current query ends
+statement ok
+SELECT 1;
+
+query T
+SELECT current_setting('active_grammar_extensions');
+----
+[snowflake]
+
+query T
+SELECT listagg(x) WITHIN GROUP (ORDER BY x) FROM (VALUES ('b'), ('a')) t(x);
+----
+ab
+
+# New connections start with it on
+query T con1
+SELECT current_setting('active_grammar_extensions');
+----
+[snowflake]
+
+query T con1
+SELECT dateadd(day, 1, DATE '2024-01-01');
+----
+2024-01-02
+
+# RESET turns it off for one connection only
+statement ok con1
+RESET active_grammar_extensions;
+
+statement error con1
+SELECT listagg(x) WITHIN GROUP (ORDER BY x) FROM (VALUES ('a')) t(x);
+----
+<REGEX>:Parser Error:.*Unknown ordered aggregate.*
+
+query T
+SELECT listagg(x) WITHIN GROUP (ORDER BY x) FROM (VALUES ('a')) t(x);
+----
+a
+
+# The opt-out applies to connections opened after it
+query T
+SELECT current_setting('duckflake_auto_enable_grammar');
+----
+true
+
+statement ok
+SET GLOBAL duckflake_auto_enable_grammar = false;
+
+query T con2
+SELECT current_setting('active_grammar_extensions');
+----
+[]
+
+statement error con2
+SELECT array_agg(x) WITHIN GROUP (ORDER BY x) FROM (VALUES ('a')) t(x);
+----
+<REGEX>:Parser Error:.*Unknown ordered aggregate.*
+
+# Turning it on by hand still works
+statement ok con2
+SET active_grammar_extensions = ['snowflake'];
+
+query T con2
+SELECT array_agg(x) WITHIN GROUP (ORDER BY x) FROM (VALUES ('a')) t(x);
+----
+[a]
+
+statement ok
+SET GLOBAL duckflake_auto_enable_grammar = true;
+
+query T con3
+SELECT current_setting('active_grammar_extensions');
+----
+[snowflake]

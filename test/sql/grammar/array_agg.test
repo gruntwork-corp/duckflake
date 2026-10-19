@@ -11,6 +11,10 @@ CREATE TABLE t AS SELECT * FROM (VALUES
 	(3, NULL, 6)
 ) v(g, x, y);
 
+# Without the grammar extension DuckDB rejects the syntax
+statement ok
+RESET active_grammar_extensions;
+
 statement error
 SELECT array_agg(x) WITHIN GROUP (ORDER BY y) FROM t;
 ----

@@ -62,17 +62,26 @@ SELECT dateadd('day', 1, TIME '01:00');
 ----
 <REGEX>:Binder Error:.*TIME values only accept hour or smaller parts.*
 
+# With the grammar on, a bare word is always a date part, as in Snowflake
 statement error
 SELECT dateadd(p, 1, DATE '2022-01-01') FROM (VALUES ('day')) t(p);
 ----
-<REGEX>:Binder Error:.*must be a constant.*
+<REGEX>:.*unsupported date or time part 'p'.*
 
 statement error
 SELECT dateadd('year', 1000000000, DATE '2022-01-01');
 ----
 <REGEX>:.*out of range.*
 
-# Without the snowflake grammar a bare part is a column name
+# Without the snowflake grammar a bare part is a column name, which must be a constant
+statement ok
+RESET active_grammar_extensions;
+
+statement error
+SELECT dateadd(p, 1, DATE '2022-01-01') FROM (VALUES ('day')) t(p);
+----
+<REGEX>:Binder Error:.*must be a constant.*
+
 statement error
 SELECT dateadd(day, 1, DATE '2022-01-01');
 ----

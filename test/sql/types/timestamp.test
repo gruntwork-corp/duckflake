@@ -69,6 +69,9 @@ SELECT NULL::TIMESTAMP_LTZ(10);
 <REGEX>:Binder Error:.*Timestamp precision must be between 0 and 9.*
 
 # These spellings need the snowflake grammar (test/sql/grammar/timestamp_types.test)
+statement ok
+RESET active_grammar_extensions;
+
 statement error
 SELECT NULL::TIMESTAMPTZ(3);
 ----

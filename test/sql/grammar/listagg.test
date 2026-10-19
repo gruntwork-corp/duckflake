@@ -13,7 +13,16 @@ CREATE TABLE t AS SELECT * FROM (VALUES
 	(3, NULL, 6)
 ) v(g, x, y);
 
+# The grammar is on by default
+query T
+SELECT list_contains(current_setting('active_grammar_extensions'), 'snowflake');
+----
+true
+
 # Without the grammar extension DuckDB rejects the syntax
+statement ok
+RESET active_grammar_extensions;
+
 statement error
 SELECT listagg(x, ',') WITHIN GROUP (ORDER BY y) FROM t;
 ----

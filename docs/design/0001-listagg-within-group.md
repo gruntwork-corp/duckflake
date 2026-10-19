@@ -135,7 +135,8 @@ Code lives in `src/grammar/`. `snowflake_grammar.cpp` registers the extension an
    `EXPORT_STATE` calls are not wrapped. Every other function goes through DuckDB's code unchanged.
 4. The binder then applies DuckDB's existing rule that `DISTINCT` and `ORDER BY` must use the same column, which is
    Snowflake's rule too.
-5. Activation is per connection: `SET active_grammar_extensions = ['snowflake'];`. The default is off.
+5. Activation: on by default for every connection (`src/grammar/auto_activation.cpp`); per connection it is managed
+   with `active_grammar_extensions`, and `duckflake_auto_enable_grammar` opts new connections out.
 6. Tests in `test/sql/grammar/listagg.test` and `test/sql/grammar/array_agg.test` cover:
     - the syntax is rejected before activation and after `RESET`;
     - `DISTINCT` on the same column, and on different columns (error);
@@ -203,9 +204,9 @@ exposure to four slots. The supported long-term route is the upstream fix (optio
 - **API churn:** the grammar extension API is labelled a preview that "may change before" 2.0 ships. Expect to fix
   the code when the submodule is bumped.
 - **ABI coupling:** every DuckDB release needs a rebuild. That is normal for C++ extensions.
-- **Activation default:** today users opt in with `SET active_grammar_extensions = ['snowflake']`. The setting is a
-  list per connection, so it replaces any other grammar extensions already set. Should loading duckflake turn the
-  grammar on automatically?
+- **Activation default:** resolved. The grammar is on automatically: `OnConnectionOpened` handles new connections,
+  and a one-shot per-connection state handles connections that were already open. When the extension is loaded through
+  a client API rather than a `LOAD` statement, the first statement on an already open connection still misses it.
 - **Nested types:** objects as `LISTAGG` input should print as JSON, Snowflake's text form, rather than DuckDB's
   `STRUCT` text form. Doing that needs a cast step in our transform.
 - **Plain `listagg` changes too:** while the grammar is active, `listagg(x)` uses `''` as its default delimiter and

@@ -6,6 +6,9 @@ require duckflake
 
 # Without ICU loaded, TIMESTAMPTZ values are shown in UTC
 
+statement ok
+RESET active_grammar_extensions;
+
 statement error
 SELECT NULL::TIMESTAMP WITH LOCAL TIME ZONE;
 ----

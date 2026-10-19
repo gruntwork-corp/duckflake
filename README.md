@@ -6,12 +6,32 @@ Currently supported:
 
 ```sql
 LOAD duckflake;
-SET active_grammar_extensions = ['snowflake'];
 
 SELECT LISTAGG(DISTINCT x, ', ') WITHIN GROUP (ORDER BY x) FROM t;
 SELECT ARRAY_AGG(x) WITHIN GROUP (ORDER BY y) FROM t;
-SELECT DATEADD(day, 1, d) FROM t;                         -- bare date part needs the SET; DATEADD('day', 1, d) works without
+SELECT DATEADD(day, 1, d) FROM t;
 ```
+
+### The snowflake grammar
+
+Syntax DuckDB's parser rejects (`WITHIN GROUP`, bare date parts, `TIME(p)`, ...) is handled by a grammar extension
+named `snowflake`. It is turned on automatically:
+
+- **New connections:** on as soon as they open.
+- **The connection that ran `LOAD duckflake`:** on from the next statement.
+- **Other connections already open:** on from the statement after their next one.
+
+To turn it off:
+
+- **One connection:** `RESET active_grammar_extensions`, or set the list yourself, e.g.
+  `SET active_grammar_extensions = []`.
+- **Connections opened from now on:** `SET GLOBAL duckflake_auto_enable_grammar = false`. This setting exists only
+  after the extension is loaded.
+
+Grammar changes apply to SQL parsed after they take effect. A single string such as `duckdb -c "LOAD duckflake; SELECT
+... WITHIN GROUP ..."` is parsed in one go, so load the extension in its own statement first. When the extension is
+loaded through a client API rather than a `LOAD` statement, the first statement on an already open connection is still
+parsed without the grammar.
 
 Functions, available as soon as the extension is loaded:
 
@@ -26,7 +46,7 @@ Functions, available as soon as the extension is loaded:
 
 Types:
 
-| Snowflake | DuckDB | Needs the `SET` |
+| Snowflake | DuckDB | Uses the grammar |
 | --- | --- | --- |
 | `NUMBER`, `NUMBER(p)`, `NUMBER(p,s)` | `DECIMAL(38,0)`, `DECIMAL(p,0)`, `DECIMAL(p,s)` | no |
 | `TIMESTAMP_NTZ`, `TIMESTAMPNTZ` (`(p)`) | `TIMESTAMP`; with `p`: `_S` (0), `_MS` (1-3), `TIMESTAMP` (4-6), `_NS` (7-9) | no |
@@ -44,10 +64,7 @@ Differences from Snowflake:
 - `TIMESTAMP_LTZ(p)` / `TIMESTAMP_TZ(p)` with `p` below 6 keep microseconds.
 - DuckDB's own `DECIMAL` / `NUMERIC` keep their `(18,3)` default.
 
-The `SET` applies to SQL parsed after it runs. A single string such as `duckdb -c "SET ...; SELECT ..."` is parsed in
-one go, so run the `SET` as its own statement first.
-
-When active, `LISTAGG` and `ARRAY_AGG` / `ARRAYAGG` follow Snowflake's behaviour:
+When the grammar is on, `LISTAGG` and `ARRAY_AGG` / `ARRAYAGG` follow Snowflake's behaviour:
 
 - `''` is the default delimiter;
 - `ARRAY_AGG` omits NULLs;
@@ -62,7 +79,7 @@ trade-offs.
 | --- | --- |
 | `src/functions/` | Plain Snowflake functions (`IFF`, ...): one file per function; always available after `LOAD` |
 | `src/types/` | Snowflake type names (`NUMBER`, ...): one file per type; always available after `LOAD` |
-| `src/grammar/` | Syntax DuckDB rejects (`LISTAGG ... WITHIN GROUP`, ...): one file per rewrite; active after the `SET` |
+| `src/grammar/` | Syntax DuckDB rejects (`LISTAGG ... WITHIN GROUP`, ...): one file per rewrite; active with the snowflake grammar |
 | `test/sql/functions/`, `test/sql/types/`, `test/sql/grammar/` | One sqllogictest file per function or rewrite |
 
 **Adding a function:**
