@@ -1,0 +1,43 @@
+#
+# Builds and tests duckflake against every supported DuckDB release, using DuckDB's extension-ci-tools.
+# A C++ extension only loads into the exact DuckDB release it was built for, so each entry is a separate build.
+#
+# To support a new DuckDB release, add a matrix entry; ci_tools_version is the extension-ci-tools tag for that release.
+# Pull requests build linux_amd64 only; pushes and tags build every platform.
+#
+name: extension-distribution
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.head_ref || '' }}-${{ github.base_ref || '' }}-${{ github.ref != 'refs/heads/main' && github.sha || '' }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: build-duckdb-${{ matrix.duckdb_version }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - duckdb_version: v2.0.0
+            ci_tools_version: v2.0.0
+    # A reusable workflow's ref cannot come from the matrix: keep this on the newest ci_tools_version
+    uses: duckdb/extension-ci-tools/.github/workflows/_extension_distribution.yml@v2.0.0
+    with:
+      duckdb_version: ${{ matrix.duckdb_version }}
+      ci_tools_version: ${{ matrix.ci_tools_version }}
+      extension_name: duckflake
+      exclude_archs: ${{ github.event_name == 'pull_request' && 'linux_arm64;linux_amd64_musl;linux_arm64_musl;osx_amd64;osx_arm64;windows_amd64;windows_arm64;windows_amd64_mingw;wasm_mvp;wasm_eh;wasm_threads' || '' }}
+
+  code-quality:
+    name: code-quality
+    uses: duckdb/extension-ci-tools/.github/workflows/_extension_code_quality.yml@v2.0.0
+    with:
+      duckdb_version: v2.0.0
+      ci_tools_version: v2.0.0
+      extension_name: duckflake
+      format_checks: 'format;tidy'

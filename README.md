@@ -117,3 +117,27 @@ make reldebug
 - `make debug` currently fails to link on arm64 (`R_AARCH64_CALL26`), so use `reldebug` there.
 - A C++ extension only loads into a DuckDB binary built from the exact same DuckDB build. The pre-built 2.0 alpha
   CLI rejects this one.
+
+### Supported DuckDB versions and CI
+
+A C++ extension only loads into the exact DuckDB release it was built for, so every supported DuckDB release is a
+separate build. The list lives in the matrix in `.github/workflows/extension-distribution.yml`:
+
+- **Pull requests:** build and test `linux_amd64` only, against every listed DuckDB release.
+- **Pushes and tags:** build and test every platform.
+
+To add a DuckDB release, add a matrix entry with its `duckdb_version` and matching `ci_tools_version` (the
+`extension-ci-tools` tag), and move the reusable workflow's `@ref` to the newest `ci_tools_version`.
+
+To reproduce one matrix entry locally (Linux only), run:
+
+```sh
+DUCKDB_VERSION=v2.0.0 docker compose -f docker-compose.test.yml run --rm test
+```
+
+- **Volumes:** each DuckDB version gets its own source, tools and build volumes, so the devcontainer build and your
+  submodule checkouts are untouched.
+- **First run:** a full DuckDB build. Later runs only rebuild duckflake.
+- **Branches:** set `CI_TOOLS_VERSION` too, e.g. `DUCKDB_VERSION=v2.0-cyanoptera CI_TOOLS_VERSION=main`.
+- **Cleanup:** remove the version's volumes with `docker volume rm duckflake-test-duckdb-<version>
+  duckflake-test-build-<version>`.

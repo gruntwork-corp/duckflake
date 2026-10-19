@@ -1,0 +1,39 @@
+# Build and test duckflake against one DuckDB release, the way one CI matrix entry does (Linux only):
+#
+#   DUCKDB_VERSION=v2.0.0 docker compose -f docker-compose.test.yml run --rm test
+#
+# CI_TOOLS_VERSION defaults to DUCKDB_VERSION (extension-ci-tools tags follow DuckDB releases); override it for
+# branches, e.g. DUCKDB_VERSION=v2.0-cyanoptera CI_TOOLS_VERSION=main.
+# Each DuckDB version gets its own source, tools and build volumes, so versions never overwrite each other and the
+# host's submodule checkouts stay untouched. The first run for a version is a full DuckDB build; later runs reuse it.
+name: duckflake-test
+
+services:
+  test:
+    build:
+      context: .devcontainer
+      dockerfile: Dockerfile
+    working_dir: /workspace
+    environment:
+      DUCKDB_VERSION: ${DUCKDB_VERSION:-v2.0.0}
+      CI_TOOLS_VERSION: ${CI_TOOLS_VERSION:-${DUCKDB_VERSION:-v2.0.0}}
+    volumes:
+      - .:/workspace:cached
+      - duckdb-src:/workspace/duckdb
+      - ci-tools-src:/workspace/extension-ci-tools
+      - build:/workspace/build
+      - ccache:/ccache
+      - vcpkg-cache:/root/.cache/vcpkg
+    command: ./scripts/docker-test.sh
+
+volumes:
+  duckdb-src:
+    name: duckflake-test-duckdb-${DUCKDB_VERSION:-v2.0.0}
+  ci-tools-src:
+    name: duckflake-test-ci-tools-${CI_TOOLS_VERSION:-${DUCKDB_VERSION:-v2.0.0}}
+  build:
+    name: duckflake-test-build-${DUCKDB_VERSION:-v2.0.0}
+  ccache:
+    name: duckflake-test-ccache
+  vcpkg-cache:
+    name: duckflake-test-vcpkg-cache
