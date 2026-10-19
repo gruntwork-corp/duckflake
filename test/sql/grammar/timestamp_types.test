@@ -1,0 +1,89 @@
+# name: test/sql/grammar/timestamp_types.test
+# description: Snowflake TIME(p), TIMESTAMPTZ(p) and TIMESTAMP WITH LOCAL TIME ZONE
+# group: [grammar]
+
+require duckflake
+
+# Without ICU loaded, TIMESTAMPTZ values are shown in UTC
+
+statement error
+SELECT NULL::TIMESTAMP WITH LOCAL TIME ZONE;
+----
+<REGEX>:Parser Error:.*LOCAL.*
+
+statement ok
+SET active_grammar_extensions = ['snowflake'];
+
+# TIMESTAMPTZ(p) behaves like TIMESTAMP_TZ(p)
+query TTT
+SELECT typeof(NULL::TIMESTAMPTZ(0)), typeof(NULL::TIMESTAMPTZ(6)), typeof(NULL::TIMESTAMPTZ(9));
+----
+TIMESTAMP WITH TIME ZONE	TIMESTAMP WITH TIME ZONE	TIMESTAMPTZ_NS
+
+query T
+SELECT CAST('2024-01-01 12:00:00.5+02' AS TIMESTAMPTZ(3));
+----
+2024-01-01 10:00:00.5+00
+
+statement error
+SELECT NULL::TIMESTAMPTZ(10);
+----
+<REGEX>:Binder Error:.*Timestamp precision must be between 0 and 9.*
+
+# TIME(p): microseconds up to 6, nanoseconds above
+query TTTT
+SELECT typeof(NULL::TIME(0)), typeof(NULL::TIME(6)), typeof(NULL::TIME(7)), typeof(NULL::TIME(9));
+----
+TIME	TIME	TIME_NS	TIME_NS
+
+query T
+SELECT TIME(9) '12:34:56.123456789';
+----
+12:34:56.123456789
+
+statement error
+SELECT NULL::TIME(10);
+----
+<REGEX>:Parser Error:.*TIME precision must be between 0 and 9.*
+
+# TIMESTAMP WITH LOCAL TIME ZONE is TIMESTAMP_LTZ
+query T
+SELECT typeof(NULL::TIMESTAMP WITH LOCAL TIME ZONE);
+----
+TIMESTAMP WITH TIME ZONE
+
+query T
+SELECT '2024-01-01 12:00:00+02'::TIMESTAMP WITH LOCAL TIME ZONE;
+----
+2024-01-01 10:00:00+00
+
+statement ok
+CREATE TABLE t (a TIME(3), b TIMESTAMPTZ(9), c TIMESTAMP WITH LOCAL TIME ZONE, d TIME(9));
+
+query TT
+SELECT column_name, column_type FROM (DESCRIBE t) ORDER BY column_name;
+----
+a	TIME
+b	TIMESTAMPTZ_NS
+c	TIMESTAMP WITH TIME ZONE
+d	TIME_NS
+
+# DuckDB's own spellings are unchanged
+query TTTTTT
+SELECT typeof(NULL::TIMESTAMP), typeof(NULL::TIMESTAMP(3)), typeof(NULL::TIMESTAMPTZ), typeof(NULL::TIME),
+       typeof(NULL::TIMESTAMP WITH TIME ZONE), typeof(NULL::TIME WITH TIME ZONE);
+----
+TIMESTAMP	TIMESTAMP_MS	TIMESTAMP WITH TIME ZONE	TIME	TIMESTAMP WITH TIME ZONE	TIME WITH TIME ZONE
+
+query TT
+SELECT typeof(NULL::VARCHAR(10)), typeof(NULL::DECIMAL(10, 2));
+----
+VARCHAR	DECIMAL(10,2)
+
+statement ok
+RESET active_grammar_extensions;
+
+statement error
+SELECT NULL::TIME(3);
+----
+<REGEX>:Parser Error:.*TIME does not allow any modifiers.*

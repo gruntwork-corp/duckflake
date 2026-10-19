@@ -72,13 +72,16 @@ static arena_ptr<TransformProcess> StartFunctionExpressionTransform(PEGTransform
 }
 
 SnowflakeGrammarExtension::SnowflakeGrammarExtension()
-    : GrammarExtension(NAME,
-                       "Snowflake syntax: LISTAGG / ARRAY_AGG ... WITHIN GROUP (ORDER BY ...), DATEADD(day, ...)") {
+    : GrammarExtension(NAME, "Snowflake syntax: LISTAGG / ARRAY_AGG ... WITHIN GROUP, DATEADD(day, ...), TIME(p), "
+                             "TIMESTAMPTZ(p), TIMESTAMP WITH LOCAL TIME ZONE") {
 }
 
 vector<GrammarChange> SnowflakeGrammarExtension::GetChanges() const {
 	vector<GrammarChange> changes;
 	changes.push_back(GrammarChange::SetTransformProcess("FunctionExpression", StartFunctionExpressionTransform));
+	for (auto &change : TimestampTypeGrammarChanges()) {
+		changes.push_back(std::move(change));
+	}
 	return changes;
 }
 

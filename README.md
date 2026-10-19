@@ -24,8 +24,28 @@ Functions, available as soon as the extension is loaded:
 | `MONTHS_BETWEEN(d1, d2)` | Snowflake's 31-day fraction and last-day-of-month rules |
 | `DAYOFWEEKISO(d)` | 1 = Monday ... 7 = Sunday |
 
-Types, available as soon as the extension is loaded: `NUMBER` is `DECIMAL(38,0)`, `NUMBER(p)` is `DECIMAL(p,0)` and
-`NUMBER(p,s)` is `DECIMAL(p,s)`. DuckDB's own `DECIMAL` / `NUMERIC` keep their `(18,3)` default.
+Types:
+
+| Snowflake | DuckDB | Needs the `SET` |
+| --- | --- | --- |
+| `NUMBER`, `NUMBER(p)`, `NUMBER(p,s)` | `DECIMAL(38,0)`, `DECIMAL(p,0)`, `DECIMAL(p,s)` | no |
+| `TIMESTAMP_NTZ`, `TIMESTAMPNTZ` (`(p)`) | `TIMESTAMP`; with `p`: `_S` (0), `_MS` (1-3), `TIMESTAMP` (4-6), `_NS` (7-9) | no |
+| `TIMESTAMP_LTZ`, `TIMESTAMPLTZ`, `TIMESTAMP_TZ` (`(p)`) | `TIMESTAMPTZ`; `TIMESTAMPTZ_NS` for `p` 7-9 | no |
+| `TIMESTAMPTZ(p)` | as `TIMESTAMP_TZ(p)` | yes |
+| `TIME(p)` | `TIME`; `TIME_NS` for `p` 7-9 | yes |
+| `TIMESTAMP WITH LOCAL TIME ZONE` | `TIMESTAMPTZ` | yes |
+
+`TIMESTAMP`, `TIMESTAMP(p)`, `DATETIME`, `TIMESTAMPTZ` and `TIMESTAMP WITH[OUT] TIME ZONE` already work in DuckDB.
+Differences from Snowflake:
+
+- Without a precision, the timestamp types use microseconds (Snowflake: nanoseconds), so `TIMESTAMP_NTZ` stays the
+  same type as `TIMESTAMP`.
+- `TIMESTAMP_TZ` keeps the instant but not the per-value offset; it is shown in the session time zone.
+- `TIMESTAMP_LTZ(p)` / `TIMESTAMP_TZ(p)` with `p` below 6 keep microseconds.
+- DuckDB's own `DECIMAL` / `NUMERIC` keep their `(18,3)` default.
+
+The `SET` applies to SQL parsed after it runs. A single string such as `duckdb -c "SET ...; SELECT ..."` is parsed in
+one go, so run the `SET` as its own statement first.
 
 When active, `LISTAGG` and `ARRAY_AGG` / `ARRAYAGG` follow Snowflake's behaviour:
 
@@ -61,7 +81,8 @@ trade-offs.
 3. List it in `GetFunctionCallRewrites()` in `src/grammar/snowflake_grammar.cpp`.
 4. Add `test/sql/grammar/<name>.test`.
 
-`src/grammar/function_call.cpp` is the only file that knows DuckDB's internal parser layout. CMake picks up every
+`src/grammar/function_call.cpp` and `src/grammar/timestamp_types.cpp` are the only files that know DuckDB's internal
+parser layout. CMake picks up every
 `.cpp` under `src/` automatically.
 
 ## Development

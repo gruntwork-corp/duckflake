@@ -1,0 +1,80 @@
+# name: test/sql/types/timestamp.test
+# description: Snowflake TIMESTAMP_NTZ / TIMESTAMP_LTZ / TIMESTAMP_TZ type names
+# group: [types]
+
+require duckflake
+
+# Without ICU loaded, TIMESTAMPTZ values are shown in UTC
+
+# Without a precision: microseconds, so TIMESTAMP_NTZ is DuckDB's TIMESTAMP
+query TTTTT
+SELECT typeof(NULL::TIMESTAMP_NTZ), typeof(NULL::TIMESTAMPNTZ), typeof(NULL::TIMESTAMP_LTZ),
+       typeof(NULL::TIMESTAMPLTZ), typeof(NULL::TIMESTAMP_TZ);
+----
+TIMESTAMP	TIMESTAMP	TIMESTAMP WITH TIME ZONE	TIMESTAMP WITH TIME ZONE	TIMESTAMP WITH TIME ZONE
+
+query T
+SELECT typeof(NULL::TIMESTAMP_NTZ) = typeof(NULL::TIMESTAMP);
+----
+true
+
+# NTZ precision picks the matching DuckDB unit
+query TTTTTTT
+SELECT typeof(NULL::TIMESTAMP_NTZ(0)), typeof(NULL::TIMESTAMP_NTZ(1)), typeof(NULL::TIMESTAMP_NTZ(3)),
+       typeof(NULL::TIMESTAMP_NTZ(4)), typeof(NULL::TIMESTAMP_NTZ(6)), typeof(NULL::TIMESTAMP_NTZ(7)),
+       typeof(NULL::TIMESTAMPNTZ(9));
+----
+TIMESTAMP_S	TIMESTAMP_MS	TIMESTAMP_MS	TIMESTAMP	TIMESTAMP	TIMESTAMP_NS	TIMESTAMP_NS
+
+# LTZ / TZ precision: microseconds up to 6, nanoseconds above
+query TTTT
+SELECT typeof(NULL::TIMESTAMP_LTZ(0)), typeof(NULL::TIMESTAMP_LTZ(6)), typeof(NULL::TIMESTAMPLTZ(7)),
+       typeof(NULL::TIMESTAMP_TZ(9));
+----
+TIMESTAMP WITH TIME ZONE	TIMESTAMP WITH TIME ZONE	TIMESTAMPTZ_NS	TIMESTAMPTZ_NS
+
+# Values keep the precision of their type
+query TTT
+SELECT '2024-01-01 12:34:56.123456789'::TIMESTAMP_NTZ(0), '2024-01-01 12:34:56.123456789'::TIMESTAMP_NTZ(3),
+       '2024-01-01 12:34:56.123456789'::TIMESTAMP_NTZ(9);
+----
+2024-01-01 12:34:56	2024-01-01 12:34:56.123	2024-01-01 12:34:56.123456789
+
+# LTZ / TZ store the instant; it is shown in the session time zone
+query TT
+SELECT '2024-01-01 12:00:00+02'::TIMESTAMP_LTZ, '2024-01-01 12:00:00.123456789+02'::TIMESTAMP_TZ(9);
+----
+2024-01-01 10:00:00+00	2024-01-01 10:00:00.123456789+00
+
+statement ok
+CREATE TABLE t (a TIMESTAMP_NTZ, b TIMESTAMP_NTZ(3), c TIMESTAMP_LTZ, d TIMESTAMP_TZ(9), e TIMESTAMPNTZ(0));
+
+query TT
+SELECT column_name, column_type FROM (DESCRIBE t) ORDER BY column_name;
+----
+a	TIMESTAMP
+b	TIMESTAMP_MS
+c	TIMESTAMP WITH TIME ZONE
+d	TIMESTAMPTZ_NS
+e	TIMESTAMP_S
+
+statement error
+SELECT NULL::TIMESTAMP_NTZ(10);
+----
+<REGEX>:Binder Error:.*Timestamp precision must be between 0 and 9.*
+
+statement error
+SELECT NULL::TIMESTAMP_LTZ(10);
+----
+<REGEX>:Binder Error:.*Timestamp precision must be between 0 and 9.*
+
+# These spellings need the snowflake grammar (test/sql/grammar/timestamp_types.test)
+statement error
+SELECT NULL::TIMESTAMPTZ(3);
+----
+<REGEX>:Binder Error:.*does not take any type parameters.*
+
+statement error
+SELECT NULL::TIME(3);
+----
+<REGEX>:Parser Error:.*TIME does not allow any modifiers.*

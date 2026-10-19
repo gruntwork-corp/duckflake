@@ -15,4 +15,7 @@ public:
 	vector<GrammarChange> GetChanges() const override;
 };
 
+//! Snowflake time and timestamp type spellings (src/grammar/timestamp_types.cpp)
+vector<GrammarChange> TimestampTypeGrammarChanges();
+
 } // namespace duckdb
