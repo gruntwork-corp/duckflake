@@ -141,3 +141,23 @@ DUCKDB_VERSION=v2.0.0 docker compose -f docker-compose.test.yml run --rm test
 - **Branches:** set `CI_TOOLS_VERSION` too, e.g. `DUCKDB_VERSION=v2.0-cyanoptera CI_TOOLS_VERSION=main`.
 - **Cleanup:** remove the version's volumes with `docker volume rm duckflake-test-duckdb-<version>
   duckflake-test-build-<version>`.
+
+### Releasing
+
+Versions are managed by [release-please](https://github.com/googleapis/release-please), set up like the estatelab
+services (`release-please-config.json`, `.release-please-manifest.json`, `.github/workflows/semver-release.yml`).
+
+- **Commits:** use conventional commit messages. `fix:` bumps the patch version and `feat:` bumps the minor version.
+  `feat!:` or a `BREAKING CHANGE:` footer bumps the minor version while we're below 1.0, and the major version after.
+  `chore:`, `ci:`, `docs:` and `test:` don't trigger a release.
+- **Release PR:** on every push to `main`, release-please updates a release PR with the next version and
+  `CHANGELOG.md`.
+- **Release:** merging the release PR tags the merge commit `vX.Y.Z` and creates a GitHub release. The same workflow
+  then builds every supported DuckDB release on every platform and attaches the binaries to the release, named
+  `duckflake-<duckdb_version>-extension-<platform>.duckdb_extension`.
+- **Tags have a `v`** (unlike the estatelab repos): DuckDB's build only treats `v1.2.3`-style tags as release
+  versions; otherwise `duckflake_version()` reports a commit hash.
+- **Repository setting:** release-please needs *Settings → Actions → General → Allow GitHub Actions to create and
+  approve pull requests*.
+- **First release:** the first release PR needs a `feat:` or `fix:` commit to appear. To pick the version yourself,
+  add a `Release-As: 0.1.0` footer to a commit.

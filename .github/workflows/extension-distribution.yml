@@ -3,18 +3,23 @@
 # A C++ extension only loads into the exact DuckDB release it was built for, so each entry is a separate build.
 #
 # To support a new DuckDB release, add a matrix entry; ci_tools_version is the extension-ci-tools tag for that release.
-# Pull requests build linux_amd64 only; pushes and tags build every platform.
+# Pull requests build linux_amd64 only; pushes build every platform.
+# Pushes to main are built by semver-release.yml, which calls this workflow and publishes the binaries on a release.
 #
 name: extension-distribution
 
 on:
   push:
+    branches-ignore:
+      - main
   pull_request:
   workflow_dispatch:
+  workflow_call:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}-${{ github.head_ref || '' }}-${{ github.base_ref || '' }}-${{ github.ref != 'refs/heads/main' && github.sha || '' }}
-  cancel-in-progress: true
+  # Never cancel builds on main: semver-release.yml publishes their binaries
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   build:

@@ -1,0 +1,70 @@
+#
+# On every push to main:
+#   1. release-please keeps a release PR up to date from conventional commits (feat:, fix:, feat!:, ...).
+#      Merging that PR tags the merge commit (vX.Y.Z) and creates a GitHub release.
+#   2. The extension is built and tested for every supported DuckDB release (extension-distribution.yml).
+#   3. When a release was created, the binaries are attached to it.
+# The build runs in this workflow because tags created with GITHUB_TOKEN do not trigger other workflows. The build
+# checks out the tagged commit, so the tag becomes the extension version (duckflake_version()).
+#
+name: semver-release
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    outputs:
+      release_created: ${{ steps.release_please.outputs.release_created }}
+      tag: ${{ steps.release_please.outputs.tag_name }}
+    steps:
+      - name: release-please
+        id: release_please
+        uses: googleapis/release-please-action@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  build:
+    needs: release
+    uses: ./.github/workflows/extension-distribution.yml
+    secrets: inherit
+
+  publish:
+    needs: [release, build]
+    if: ${{ needs.release.outputs.release_created }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: download-binaries
+        uses: actions/download-artifact@v4
+        with:
+          pattern: duckflake-*-extension-*
+          path: artifacts
+
+      # Each artifact (duckflake-<duckdb_version>-extension-<arch>) holds the binary at its top level, e.g.
+      # duckflake.duckdb_extension; release assets need unique names, so give each the artifact's name
+      - name: name-binaries
+        run: |
+          mkdir release
+          for dir in artifacts/*/; do
+            name=$(basename "$dir")
+            find "$dir" -maxdepth 1 -type f -name 'duckflake.*' | while read -r file; do
+              base=$(basename "$file")
+              cp "$file" "release/${name}.${base#*.}"
+            done
+          done
+          ls -l release
+
+      - name: upload-binaries
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "${{ needs.release.outputs.tag }}" release/* --repo "${{ github.repository }}"
