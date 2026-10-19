@@ -24,6 +24,9 @@ Functions, available as soon as the extension is loaded:
 | `MONTHS_BETWEEN(d1, d2)` | Snowflake's 31-day fraction and last-day-of-month rules |
 | `DAYOFWEEKISO(d)` | 1 = Monday ... 7 = Sunday |
 
+Types, available as soon as the extension is loaded: `NUMBER` is `DECIMAL(38,0)`, `NUMBER(p)` is `DECIMAL(p,0)` and
+`NUMBER(p,s)` is `DECIMAL(p,s)`. DuckDB's own `DECIMAL` / `NUMERIC` keep their `(18,3)` default.
+
 When active, `LISTAGG` and `ARRAY_AGG` / `ARRAYAGG` follow Snowflake's behaviour:
 
 - `''` is the default delimiter;
@@ -38,8 +41,9 @@ trade-offs.
 | Path | What goes there |
 | --- | --- |
 | `src/functions/` | Plain Snowflake functions (`IFF`, ...): one file per function; always available after `LOAD` |
+| `src/types/` | Snowflake type names (`NUMBER`, ...): one file per type; always available after `LOAD` |
 | `src/grammar/` | Syntax DuckDB rejects (`LISTAGG ... WITHIN GROUP`, ...): one file per rewrite; active after the `SET` |
-| `test/sql/functions/`, `test/sql/grammar/` | One sqllogictest file per function or rewrite |
+| `test/sql/functions/`, `test/sql/types/`, `test/sql/grammar/` | One sqllogictest file per function or rewrite |
 
 **Adding a function:**
 

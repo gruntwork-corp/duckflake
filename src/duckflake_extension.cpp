@@ -5,10 +5,12 @@
 #include "duckdb.hpp"
 #include "functions/functions.hpp"
 #include "grammar/snowflake_grammar.hpp"
+#include "types/types.hpp"
 
 namespace duckdb {
 
 static void LoadInternal(ExtensionLoader &loader) {
+	RegisterTypes(loader);
 	RegisterFunctions(loader);
 	GrammarExtension::Register(loader.GetDatabaseInstance(), make_shared_ptr<SnowflakeGrammarExtension>());
 }
