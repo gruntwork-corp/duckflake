@@ -4,7 +4,7 @@
 set -euo pipefail
 
 : "${DUCKDB_VERSION:?set DUCKDB_VERSION, e.g. v2.0.0}"
-: "${CI_TOOLS_VERSION:=${DUCKDB_VERSION}}"
+: "${CI_TOOLS_VERSION:?set CI_TOOLS_VERSION, e.g. v2.0-cyanoptera}"
 
 # Clone a ref (tag or branch) into a directory once; an existing checkout must already be on that ref
 checkout() {

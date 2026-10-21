@@ -2,8 +2,9 @@
 # Builds and tests duckflake against every supported DuckDB release, using DuckDB's extension-ci-tools.
 # A C++ extension only loads into the exact DuckDB release it was built for, so each entry is a separate build.
 #
-# To support a new DuckDB release, add a matrix entry; ci_tools_version is the extension-ci-tools tag for that release.
-# Pull requests build linux_amd64 only; pushes build every platform.
+# To support a new DuckDB release, add a matrix entry; ci_tools_version is the extension-ci-tools branch for that release
+# (extension-ci-tools cuts a branch per DuckDB release, e.g. v1.5.6; until v2.0.0 exists, use v2.0-cyanoptera).
+# Pull requests build linux_amd64 only; pushes build every platform except osx_amd64, which DuckDB is phasing out.
 # Pushes to main are built by semver-release.yml, which calls this workflow and publishes the binaries on a release.
 #
 name: extension-distribution
@@ -29,20 +30,20 @@ jobs:
       matrix:
         include:
           - duckdb_version: v2.0.0
-            ci_tools_version: v2.0.0
+            ci_tools_version: v2.0-cyanoptera
     # A reusable workflow's ref cannot come from the matrix: keep this on the newest ci_tools_version
-    uses: duckdb/extension-ci-tools/.github/workflows/_extension_distribution.yml@v2.0.0
+    uses: duckdb/extension-ci-tools/.github/workflows/_extension_distribution.yml@v2.0-cyanoptera
     with:
       duckdb_version: ${{ matrix.duckdb_version }}
       ci_tools_version: ${{ matrix.ci_tools_version }}
       extension_name: duckflake
-      exclude_archs: ${{ github.event_name == 'pull_request' && 'linux_arm64;linux_amd64_musl;linux_arm64_musl;osx_amd64;osx_arm64;windows_amd64;windows_arm64;windows_amd64_mingw;wasm_mvp;wasm_eh;wasm_threads' || '' }}
+      exclude_archs: ${{ github.event_name == 'pull_request' && 'linux_arm64;linux_amd64_musl;linux_arm64_musl;osx_amd64;osx_arm64;windows_amd64;windows_arm64;windows_amd64_mingw;wasm_mvp;wasm_eh;wasm_threads' || 'osx_amd64' }}
 
   code-quality:
     name: code-quality
-    uses: duckdb/extension-ci-tools/.github/workflows/_extension_code_quality.yml@v2.0.0
+    uses: duckdb/extension-ci-tools/.github/workflows/_extension_code_quality.yml@v2.0-cyanoptera
     with:
       duckdb_version: v2.0.0
-      ci_tools_version: v2.0.0
+      ci_tools_version: v2.0-cyanoptera
       extension_name: duckflake
       format_checks: 'format;tidy'

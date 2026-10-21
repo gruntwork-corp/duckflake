@@ -33,6 +33,10 @@ Grammar changes apply to SQL parsed after they take effect. A single string such
 loaded through a client API rather than a `LOAD` statement, the first statement on an already open connection is still
 parsed without the grammar.
 
+The grammar extends DuckDB's PEG parser, the default since 2.0. `SET enable_legacy_parser = true` switches a session to
+the legacy parser, which takes no grammar extensions, so the grammar features stop working there; functions and types
+keep working.
+
 Functions, available as soon as the extension is loaded:
 
 | Function | Notes |
@@ -104,8 +108,8 @@ parser layout. CMake picks up every
 
 ## Development
 
-Open the repo in the devcontainer (`.devcontainer/`). It builds against the `duckdb` submodule on the
-`v2.0-cyanoptera` branch.
+Open the repo in the devcontainer (`.devcontainer/`). It builds against the `duckdb` submodule, pinned to the `v2.0.0`
+release.
 
 ```sh
 git submodule update --init --recursive
@@ -115,8 +119,8 @@ make reldebug
 ```
 
 - `make debug` currently fails to link on arm64 (`R_AARCH64_CALL26`), so use `reldebug` there.
-- A C++ extension only loads into a DuckDB binary built from the exact same DuckDB build. The pre-built 2.0 alpha
-  CLI rejects this one.
+- A C++ extension only loads into a DuckDB binary built from the exact same DuckDB build. Use the CLI under `build/`;
+  a pre-built CLI rejects an unsigned local build.
 
 ### Supported DuckDB versions and CI
 
@@ -124,10 +128,13 @@ A C++ extension only loads into the exact DuckDB release it was built for, so ev
 separate build. The list lives in the matrix in `.github/workflows/extension-distribution.yml`:
 
 - **Pull requests:** build and test `linux_amd64` only, against every listed DuckDB release.
-- **Pushes and tags:** build and test every platform.
+- **Pushes and tags:** build and test every platform except `osx_amd64`, which DuckDB is phasing out (community
+  extensions no longer build for it; 2.1 drops it).
 
 To add a DuckDB release, add a matrix entry with its `duckdb_version` and matching `ci_tools_version` (the
-`extension-ci-tools` tag), and move the reusable workflow's `@ref` to the newest `ci_tools_version`.
+`extension-ci-tools` branch for that release), and move the reusable workflow's `@ref` to the newest
+`ci_tools_version`. `extension-ci-tools` has no `v2.0.0` branch yet, so 2.0.0 builds with `v2.0-cyanoptera`; switch
+the matrix, the `@ref`s and the `CI_TOOLS_VERSION` default in `docker-compose.test.yml` once it appears.
 
 To reproduce one matrix entry locally (Linux only), run:
 
@@ -138,7 +145,7 @@ DUCKDB_VERSION=v2.0.0 docker compose -f docker-compose.test.yml run --rm test
 - **Volumes:** each DuckDB version gets its own source, tools and build volumes, so the devcontainer build and your
   submodule checkouts are untouched.
 - **First run:** a full DuckDB build. Later runs only rebuild duckflake.
-- **Branches:** set `CI_TOOLS_VERSION` too, e.g. `DUCKDB_VERSION=v2.0-cyanoptera CI_TOOLS_VERSION=main`.
+- **Other versions:** set `CI_TOOLS_VERSION` too, e.g. `DUCKDB_VERSION=v2.0-cyanoptera CI_TOOLS_VERSION=main`.
 - **Cleanup:** remove the version's volumes with `docker volume rm duckflake-test-duckdb-<version>
   duckflake-test-build-<version>`.
 

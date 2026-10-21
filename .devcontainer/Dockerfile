@@ -2,8 +2,8 @@ FROM debian:trixie-slim
 
 # Matches the vcpkg commit used by duckdb/extension-ci-tools (Release 2026.06.24)
 ARG VCPKG_COMMIT=cd61e1e26a038e82d6550a3ebbe0fbbfe7da78e3
-# DuckDB CLI channel: "alpha" tracks the v2.0-cyanoptera dev builds; set to e.g. "2.0.0" once released
-ARG DUCKDB_VERSION=alpha
+# DuckDB CLI release, for poking at built extensions
+ARG DUCKDB_VERSION=2.0.0
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     autoconf \
@@ -42,7 +42,7 @@ RUN git init ${VCPKG_ROOT} \
 ENV VCPKG_TOOLCHAIN_PATH=${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake \
     PATH="${VCPKG_ROOT}:${PATH}"
 
-# DuckDB CLI (2.0 dev build) for poking at built extensions
+# DuckDB CLI for poking at built extensions
 RUN curl -fsSL https://install.duckdb.org | DUCKDB_VERSION=${DUCKDB_VERSION} bash
 ENV PATH="/root/.duckdb/cli/latest:${PATH}"
 
